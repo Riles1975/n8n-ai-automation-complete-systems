@@ -1,0 +1,180 @@
+{
+  "name": "COMPLETE SYSTEMS → Intake Automation System",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SETUP + PURPOSE\n\nCaptures client or internal requests, validates required fields, normalizes data, calculates urgency, and creates a structured intake record.",
+        "height": 178,
+        "width": 336
+      },
+      "id": "d0380cd3-330a-4d9e-aaef-6d799c21eb20",
+      "name": "SETUP + PURPOSE",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        256,
+        16
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "ca03631d-867f-46f3-a41e-3f708c546bfc",
+      "name": "Manual Demo Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "intake-automation-system",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "465b261d-5acb-4b6e-8bc2-ba9a2de3bbd2",
+      "name": "COMPLETE SYSTEMS → Intake Automation System Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\n\nreturn [{\n  json: {\n    config: {\n      companyName: body.companyName || 'ABM Solutions Demo',\n      senderName: body.senderName || 'Demo Sender',\n      senderEmail: body.senderEmail || 'demo@example.com',\n      slackWebhookUrl: body.slackWebhookUrl || 'REPLACE_WITH_SLACK_WEBHOOK_URL',\n      hubspotToken: body.hubspotToken || 'REPLACE_WITH_HUBSPOT_PRIVATE_APP_TOKEN',\n      openAiApiKey: body.openAiApiKey || 'REPLACE_WITH_OPENAI_API_KEY',\n      demoMode: body.demoMode !== false\n    },\n    payload: body\n  }\n}];\n"
+      },
+      "id": "8d10cf36-a533-4fd9-860b-b3b9a8cb4b5e",
+      "name": "Load Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const root = $input.first().json;\nconst p = root.payload || {};\nconst isManualDemo = Object.keys(p).length === 0;\n\nconst submission = isManualDemo\n  ? {\n      name: 'Jamie Carter',\n      email: 'jamie@example.com',\n      company: 'Carter & Co',\n      requestType: 'workflow_automation',\n      problem: 'Manual lead intake creates delays and duplicate records.',\n      desiredOutcome: 'Automated intake, CRM creation, and owner notification',\n      deadline: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),\n      budget: 5000\n    }\n  : {\n      name: p.name,\n      email: p.email,\n      company: p.company,\n      requestType: p.requestType,\n      problem: p.problem,\n      desiredOutcome: p.desiredOutcome,\n      deadline: p.deadline,\n      budget: Number(p.budget || 0)\n    };\n\nreturn [{ json: { ...root, submission } }];"
+      },
+      "id": "da798899-e31b-4cde-841d-929867dab5bf",
+      "name": "Create Demo Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json,s=d.submission;\nconst missing=['name','email','problem','desiredOutcome'].filter(k=>!s[k]);\nif(missing.length) throw new Error(`Missing required fields: ${missing.join(', ')}`);\nif(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(s.email)) throw new Error('Invalid email.');\nconst days=Math.ceil((new Date(s.deadline)-Date.now())/86400000);\nconst urgency=days<=3?'critical':days<=7?'high':days<=21?'medium':'low';\nreturn [{json:{...d,result:{intakeId:`INT-${Date.now()}`,status:'received',urgency,daysUntilDeadline:days,normalized:s,nextStep:'Discovery and solution scoping',createdAt:new Date().toISOString()}}}];\n"
+      },
+      "id": "adb27009-f2ae-4a68-92bd-34c061203376",
+      "name": "Validate + Structure Intake",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json;\nreturn [{json:{success:true,demoMode:d.config?.demoMode ?? true,workflow:$workflow.name,result:d.result || d,completedAt:new Date().toISOString()}}];\n"
+      },
+      "id": "6e88880c-3e54-4298-ac26-78cfe0958dd5",
+      "name": "Execution Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "content": "WHAT IT DOES:\n\nCaptures client or internal requests and converts them into standardized, actionable intake records.\n\nHOW IT DOES IT:\n\nAccepts webhook or demo submissions, validates email and required information, normalizes the data, calculates deadline urgency, assigns a unique intake ID, and returns a structured result.\n\nWHY PAY FOR IT:\n\nEliminates manual data entry, prevents incomplete or invalid requests, accelerates response times, and creates a reliable foundation for CRM, notification, and fulfillment automations.",
+        "height": 592,
+        "width": 320,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        656,
+        -400
+      ],
+      "id": "c0482b03-7d8c-414d-a6bc-60172325abb6",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Demo Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COMPLETE SYSTEMS → Intake Automation System Webhook": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Configuration": {
+      "main": [
+        [
+          {
+            "node": "Create Demo Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Demo Input": {
+      "main": [
+        [
+          {
+            "node": "Validate + Structure Intake",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate + Structure Intake": {
+      "main": [
+        [
+          {
+            "node": "Execution Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
