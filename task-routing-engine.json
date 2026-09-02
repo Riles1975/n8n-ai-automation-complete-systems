@@ -1,0 +1,180 @@
+{
+  "name": "COMPLETE SYSTEMS → Task Routing Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SETUP + PURPOSE\n\nClassifies incoming work by type, urgency, complexity, and customer tier, then assigns the best team, queue, SLA, and priority.",
+        "height": 146,
+        "width": 352
+      },
+      "id": "038a8b18-2ef3-4567-8370-35e8e5468a63",
+      "name": "SETUP + PURPOSE",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        128,
+        96
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "553a8cf6-8ee9-4382-8221-d02b0354d400",
+      "name": "Manual Demo Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "task-routing-engine",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "899828c6-6152-418e-a2d9-edc51fb1eb82",
+      "name": "COMPLETE SYSTEMS → Task Routing Engine Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\n\nreturn [{\n  json: {\n    config: {\n      companyName: body.companyName || 'ABM Solutions Demo',\n      demoMode: body.demoMode !== false\n    },\n    payload: body\n  }\n}];"
+      },
+      "id": "25c5b0dc-ec52-4dac-9e7f-54f829421ed8",
+      "name": "Load Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst root=$input.first().json,p=root.payload||{};\nreturn [{json:{...root,task:{id:p.id||`TASK-${Date.now()}`,title:p.title||'CRM integration is failing',description:p.description||'HubSpot records are not syncing after form submissions.',customerTier:p.customerTier||'enterprise',urgency:p.urgency||'high'}}}];\n"
+      },
+      "id": "c9ab09be-5aaa-4967-ab81-7cbfc3e5841e",
+      "name": "Create Demo Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst t = d.task;\nconst text = `${t.title || ''} ${t.description || ''}`.toLowerCase();\n\nlet taskType = 'General Operations';\nlet assignedTeam = 'Operations';\n\nif (/api|integration|sync|webhook|automation|error|bug|technical/.test(text)) {\n  taskType = 'Technical Issue';\n  assignedTeam = 'Automation Engineering';\n} else if (/invoice|billing|payment|refund|charge/.test(text)) {\n  taskType = 'Billing and Payments';\n  assignedTeam = 'Finance';\n} else if (/lead|deal|sales|crm|pipeline|prospect/.test(text)) {\n  taskType = 'Sales Operations';\n  assignedTeam = 'Revenue Operations';\n} else if (/onboarding|customer|account|renewal|cancellation/.test(text)) {\n  taskType = 'Customer Success';\n  assignedTeam = 'Customer Success';\n} else if (/employee|payroll|benefits|hiring|candidate/.test(text)) {\n  taskType = 'People Operations';\n  assignedTeam = 'Human Resources';\n}\n\nlet complexity = 'low';\n\nif (\n  /multiple systems|data migration|security|compliance|enterprise-wide|architecture/.test(text)\n) {\n  complexity = 'high';\n} else if (\n  /integration|api|automation|workflow|configuration|investigation/.test(text)\n) {\n  complexity = 'medium';\n}\n\nconst urgency = String(t.urgency || 'medium').toLowerCase();\nconst customerTier = String(t.customerTier || 'standard').toLowerCase();\n\nlet priority = 'P3';\n\nif (\n  urgency === 'critical' ||\n  (urgency === 'high' && customerTier === 'enterprise')\n) {\n  priority = 'P1';\n} else if (\n  urgency === 'high' ||\n  complexity === 'high' ||\n  customerTier === 'enterprise'\n) {\n  priority = 'P2';\n}\n\nconst slaHours = {\n  P1: 1,\n  P2: 4,\n  P3: 24\n}[priority];\n\nreturn [{\n  json: {\n    ...d,\n    result: {\n      ...t,\n      taskType,\n      complexity,\n      assignedTeam,\n      queue: `${assignedTeam} Queue`,\n      priority,\n      slaHours,\n      routedAt: new Date().toISOString()\n    }\n  }\n}];"
+      },
+      "id": "25a3a696-e548-4849-9867-bc1332368d2f",
+      "name": "Classify + Route Task",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json;\nreturn [{json:{success:true,demoMode:d.config?.demoMode ?? true,workflow:$workflow.name,result:d.result || d,completedAt:new Date().toISOString()}}];\n"
+      },
+      "id": "1aefdfff-cfb8-4c1b-91d9-3b9352e1122d",
+      "name": "Execution Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "content": "WHAT IT DOES\n\nAutomatically classifies incoming tasks by type, urgency, complexity, and customer tier, then assigns the correct team, queue, priority, and SLA.\n\nHOW IT DOES IT\n\nAccepts tasks through a live webhook, analyzes the request using configurable routing rules, and returns a structured routing decision instantly.\n\nWHY PAY FOR IT\n\nEliminates manual triage, reduces misrouted work, accelerates response times, protects SLAs, and gives teams a repeatable system that scales as request volume grows.",
+        "height": 528,
+        "width": 320,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        544,
+        -288
+      ],
+      "id": "6d13e52d-0e12-4efc-9574-032c226d2e90",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Demo Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COMPLETE SYSTEMS → Task Routing Engine Webhook": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Configuration": {
+      "main": [
+        [
+          {
+            "node": "Create Demo Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Demo Input": {
+      "main": [
+        [
+          {
+            "node": "Classify + Route Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify + Route Task": {
+      "main": [
+        [
+          {
+            "node": "Execution Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
