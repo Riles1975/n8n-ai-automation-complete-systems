@@ -1,0 +1,253 @@
+{
+  "name": "COMPLETE SYSTEMS → AI Summarization Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SETUP + PURPOSE\n\nTurns long-form text into a concise executive summary, key points, decisions, risks, and action items. It runs locally in demo mode and can later be upgraded to an LLM node.",
+        "height": 194,
+        "width": 304
+      },
+      "id": "812b0a73-73c9-4166-b536-f115c9958178",
+      "name": "SETUP + PURPOSE",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        432,
+        16
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "2222f09a-3d72-4f8e-982b-61d79b3920f1",
+      "name": "Manual Demo Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-summarization-workflow",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "cbf3037c-111d-4768-a900-4d9e7b9b30b0",
+      "name": "COMPLETE SYSTEMS → AI Summarization Workflow Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\n\nreturn [{\n  json: {\n    config: {\n      companyName: body.companyName || 'ABM Solutions Demo',\n      senderName: body.senderName || 'Jordan Lee',\n      senderEmail: body.senderEmail || 'demo@example.com',\n      slackWebhookUrl: body.slackWebhookUrl || 'REPLACE_WITH_SLACK_WEBHOOK_URL',\n      hubspotToken: body.hubspotToken || 'REPLACE_WITH_HUBSPOT_PRIVATE_APP_TOKEN',\n      openAiApiKey: body.openAiApiKey || 'REPLACE_WITH_OPENAI_API_KEY',\n      demoMode: body.demoMode !== false\n    },\n    payload: body\n  }\n}];\n"
+      },
+      "id": "86e8e712-1be7-406e-8c80-c694fa38d291",
+      "name": "Load Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst root=$input.first().json,p=root.payload||{};\nconst text=p.text||`The operations team reviewed the lead handoff process. Sales currently copies form submissions into the CRM manually, then alerts account executives in Slack. Average response time is four hours. The team agreed to automate validation, CRM creation, ownership assignment, and alerts. Security requested that API tokens be stored in credentials. The pilot should launch next Friday, with Morgan responsible for testing and Jordan Lee responsible for documentation.`;\nreturn [{json:{...root,document:{title:p.title||'Operations Meeting Notes',text}}}];\n"
+      },
+      "id": "abe8fdd1-cbaf-4049-9344-4b5a8296dd9f",
+      "name": "Create Demo Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json, text=d.document.text;\nconst sentences=text.split(/(?<=[.!?])\\s+/).filter(Boolean);\nconst actionWords=/agreed|should|will|responsible|launch|test|document|follow up/i;\nconst riskWords=/risk|security|delay|blocked|issue|concern/i;\nconst actions=sentences.filter(s=>actionWords.test(s)).slice(0,5);\nconst risks=sentences.filter(s=>riskWords.test(s)).slice(0,5);\nconst summary=sentences.slice(0,3).join(' ');\nreturn [{json:{...d,result:{title:d.document.title,executiveSummary:summary,keyPoints:sentences.slice(0,6),actionItems:actions,risks,wordCount:text.trim().split(/\\s+/).length}}}];\n"
+      },
+      "id": "1db683d2-b4ff-483b-b55b-3ec8488b68f6",
+      "name": "Extract Summary + Actions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1424,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json;\nreturn [{json:{success:true,demoMode:d.config?.demoMode ?? true,workflow:$workflow.name,result:d.result || d,completedAt:new Date().toISOString()}}];\n"
+      },
+      "id": "a861ad1e-31ea-45d4-8b80-98bbf1fc38a8",
+      "name": "Execution Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-5-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{ $json.prompt }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1104,
+        352
+      ],
+      "id": "8426cabd-7fba-47cc-b0a9-cb81114516d9",
+      "name": "Message a model"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b91bf00f-fac6-4118-af67-030ab5dee93f",
+              "name": "prompt",
+              "value": "={{ `You are an expert executive assistant.\n\nAnalyze the document below and return ONLY valid JSON.\n\nUse this exact schema:\n\n{\n  \"executiveSummary\": \"\",\n  \"keyPoints\": [],\n  \"decisions\": [],\n  \"actionItems\": [],\n  \"risks\": [],\n  \"nextSteps\": []\n}\n\nDocument Title:\n${$json.document.title}\n\nDocument:\n${$json.document.text}` }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        928,
+        352
+      ],
+      "id": "cac76fb0-8af8-4e80-8f13-28c52aca4905",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "content": "**WHAT IT DOES:**\nAutomatically converts long-form text such as meeting notes, reports, emails, or documents into a concise AI-generated summary with key points, decisions, action items, risks, and next steps.\n\n**HOW IT DOES IT:**\nAccepts text through a manual trigger or webhook, prepares the input and AI prompt, sends it to GPT-5 mini for analysis, then processes the results into a structured business-ready output.\n\n**WHY PAY FOR IT:**\nSaves teams hours of manual reading and note-taking, reduces the chance of important information being missed, standardizes documentation, and helps employees turn large amounts of information into clear, actionable insights faster.\n",
+        "height": 608,
+        "width": 320,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        816,
+        -400
+      ],
+      "id": "9c46a4d3-c196-4bca-9df3-80b224d6e6dc",
+      "name": "Sticky Note3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Demo Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COMPLETE SYSTEMS → AI Summarization Workflow Webhook": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Configuration": {
+      "main": [
+        [
+          {
+            "node": "Create Demo Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Demo Input": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Summary + Actions": {
+      "main": [
+        [
+          {
+            "node": "Execution Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Extract Summary + Actions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
