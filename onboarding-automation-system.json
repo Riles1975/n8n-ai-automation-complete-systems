@@ -1,0 +1,180 @@
+{
+  "name": "COMPLETE SYSTEMS → Onboarding Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SETUP + PURPOSE\n\nCreates a complete onboarding plan from a new customer or employee record, including tasks, owners, due dates, communications, and readiness status.",
+        "height": 178,
+        "width": 352
+      },
+      "id": "7ac46168-e2ba-4d6d-b67a-42d892dfe449",
+      "name": "SETUP + PURPOSE",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        176,
+        16
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "e3b283f5-72a5-494e-bcab-695699977df3",
+      "name": "Manual Demo Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "onboarding-automation",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "c8677d2c-5d5d-420b-8dd4-75b5d2f4a87a",
+      "name": "COMPLETE SYSTEMS → Onboarding Automation Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\n\nreturn [{\n  json: {\n    config: {\n      companyName: body.companyName || 'ABM Solutions Demo',\n      senderName: body.senderName || 'Demo Sender',\n      senderEmail: body.senderEmail || 'demo@example.com',\n      slackWebhookUrl: body.slackWebhookUrl || 'REPLACE_WITH_SLACK_WEBHOOK_URL',\n      hubspotToken: body.hubspotToken || 'REPLACE_WITH_HUBSPOT_PRIVATE_APP_TOKEN',\n      openAiApiKey: body.openAiApiKey || 'REPLACE_WITH_OPENAI_API_KEY',\n      demoMode: body.demoMode !== false\n    },\n    payload: body\n  }\n}];\n"
+      },
+      "id": "1057b8a0-936c-42de-b39d-f5bb493be384",
+      "name": "Load Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst root=$input.first().json,p=root.payload||{};\nreturn [{json:{...root,person:{name:p.name||'Morgan Chen',email:p.email||'morgan@example.com',company:p.company||'BluePeak',startDate:p.startDate||new Date(Date.now()+7*86400000).toISOString().slice(0,10),onboardingType:p.onboardingType||'client',package:p.package||'Automation Implementation'}}}];\n"
+      },
+      "id": "5ffeff1d-7f98-4c62-9219-a61db51349b4",
+      "name": "Create Demo Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json,p=d.person,start=new Date(p.startDate);\nconst date=(offset)=>new Date(start.getTime()+offset*86400000).toISOString().slice(0,10);\nconst tasks=[\n{task:'Send welcome email and intake form',owner:'Client Success',due:date(-5)},\n{task:'Create shared workspace and project record',owner:'Operations',due:date(-3)},\n{task:'Confirm goals, systems, and access requirements',owner:'Solutions Architect',due:date(-1)},\n{task:'Run kickoff meeting',owner:'Solutions Architect',due:date(0)},\n{task:'Deliver first progress update',owner:'Project Lead',due:date(7)}\n];\nreturn [{json:{...d,result:{person:p,status:'onboarding_scheduled',tasks,welcomeMessage:`Welcome ${p.name}. We are excited to begin your ${p.package} onboarding.`,readiness:{taskCount:tasks.length,startDate:p.startDate},createdAt:new Date().toISOString()}}}];\n"
+      },
+      "id": "2367d318-74c3-4666-8152-5bc0b0ced584",
+      "name": "Build Onboarding Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json;\nreturn [{json:{success:true,demoMode:d.config?.demoMode ?? true,workflow:$workflow.name,result:d.result || d,completedAt:new Date().toISOString()}}];\n"
+      },
+      "id": "5724613c-ea83-49ee-8266-aac8008a3b18",
+      "name": "Execution Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "content": "WHAT IT DOES:\n\nTransforms a new customer or employee record into a complete, organized onboarding plan.\n\nHOW IT DOES IT:\n\nAccepts data through a manual trigger or webhook, standardizes the record, then generates assigned tasks, due dates, welcome messaging, and readiness status.\n\nWHY PAY FOR IT:\n\nEliminates repetitive onboarding setup, reduces missed steps, improves accountability, and creates a faster, more consistent experience for every new customer or employee.",
+        "height": 560,
+        "width": 320,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        608,
+        -368
+      ],
+      "id": "0af0089c-bb14-4d61-9a69-b6c8299a5095",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Demo Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COMPLETE SYSTEMS → Onboarding Automation Webhook": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Configuration": {
+      "main": [
+        [
+          {
+            "node": "Create Demo Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Demo Input": {
+      "main": [
+        [
+          {
+            "node": "Build Onboarding Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Onboarding Plan": {
+      "main": [
+        [
+          {
+            "node": "Execution Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
