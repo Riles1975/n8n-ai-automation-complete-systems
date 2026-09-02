@@ -1,0 +1,180 @@
+{
+  "name": "COMPLETE SYSTEMS → Multi-Step Approval Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SETUP + PURPOSE\n\nEvaluates a request against policy, routes it through manager and finance approval stages, and produces a complete audit trail and final disposition.",
+        "height": 178,
+        "width": 288
+      },
+      "id": "93ccba7b-0be1-4a4a-8422-0cbf823dc712",
+      "name": "SETUP + PURPOSE",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        272,
+        32
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "756c6706-061d-47a0-9ae2-aa661ea8b53d",
+      "name": "Manual Demo Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "multi-step-approval-workflow",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "0f5af8fe-d485-463c-94f9-1f99bad1286f",
+      "name": "COMPLETE SYSTEMS → Multi-Step Approval Workflow Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\n\nreturn [{\n  json: {\n    config: {\n      companyName: body.companyName || 'ABM Solutions Demo',\n      demoMode: body.demoMode !== false\n    },\n    payload: body\n  }\n}];"
+      },
+      "id": "d62ca10b-6fd6-41c0-b612-8080f120121c",
+      "name": "Load Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst root=$input.first().json,p=root.payload||{};\nreturn [{json:{...root,request:{requestId:p.requestId||`REQ-${Date.now()}`,requester:p.requester||'Jordan Lee',type:p.type||'software_purchase',amount:Number(p.amount||2750),businessJustification:p.businessJustification||'Automation platform required for client delivery',managerApproved:p.managerApproved??true,financeApproved:p.financeApproved??true}}}];\n"
+      },
+      "id": "ee480f91-0e6e-4a54-b5c0-5f61191b5573",
+      "name": "Create Demo Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json,r=d.request;\nconst stages=[{stage:'manager',required:r.amount>=500,approved:!!r.managerApproved},{stage:'finance',required:r.amount>=2500,approved:!!r.financeApproved}];\nconst failed=stages.find(s=>s.required&&!s.approved);\nconst status=failed?'rejected':stages.some(s=>s.required)?'approved':'auto_approved';\nreturn [{json:{...d,result:{requestId:r.requestId,status,stages,auditTrail:stages.map(s=>({stage:s.stage,required:s.required,approved:s.approved,checkedAt:new Date().toISOString()})),reason:failed?`Rejected at ${failed.stage} approval`:'All required approvals passed'}}}];\n"
+      },
+      "id": "8264ca8a-17d5-46aa-9695-b80eb9efe1dc",
+      "name": "Apply Approval Policy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json;\nreturn [{json:{success:true,demoMode:d.config?.demoMode ?? true,workflow:$workflow.name,result:d.result || d,completedAt:new Date().toISOString()}}];\n"
+      },
+      "id": "a31cf4a6-af1e-4c7c-bdc4-80e37b966cb4",
+      "name": "Execution Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "content": "WHAT IT DOES:\n\nEvaluates purchase and business requests against configurable approval thresholds, then returns an approved, rejected, or automatically approved decision.\n\n\nHOW IT DOES IT:\n\nAccepts requests through a webhook, determines whether manager and finance approval are required, evaluates each decision, and generates a timestamped audit trail.\n\n\nWHY PAY FOR IT:\n\nIt replaces inconsistent manual approval tracking with a fast, standardized, auditable process that reduces delays, prevents unauthorized spending, and gives businesses clear decision records.",
+        "height": 592,
+        "width": 368,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        640,
+        -384
+      ],
+      "id": "6b162870-4729-4f6a-ab00-66247870e8d0",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Demo Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COMPLETE SYSTEMS → Multi-Step Approval Workflow Webhook": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Configuration": {
+      "main": [
+        [
+          {
+            "node": "Create Demo Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Demo Input": {
+      "main": [
+        [
+          {
+            "node": "Apply Approval Policy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Approval Policy": {
+      "main": [
+        [
+          {
+            "node": "Execution Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
