@@ -1,0 +1,180 @@
+{
+  "name": "COMPLETE SYSTEMS → CRM Sync Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SETUP + PURPOSE\n\nNormalizes records from two systems, resolves conflicts using timestamps and field completeness, and produces create, update, or no-op synchronization actions.",
+        "height": 178,
+        "width": 304
+      },
+      "id": "51b4295e-1d02-4294-a95c-b24d62284f04",
+      "name": "SETUP + PURPOSE",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        336,
+        48
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "239dfc55-9494-4f64-8e71-06be7b5bac19",
+      "name": "Manual Demo Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "crm-sync-automation",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "647c27c9-decb-4322-b438-840376120f37",
+      "name": "COMPLETE SYSTEMS → CRM Sync Automation Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\n\nreturn [{\n  json: {\n    config: {\n      companyName: body.companyName || 'ABM Solutions Demo',\n      senderName: body.senderName || 'Demo Sender',\n      senderEmail: body.senderEmail || 'demo@example.com',\n      slackWebhookUrl: body.slackWebhookUrl || 'REPLACE_WITH_SLACK_WEBHOOK_URL',\n      hubspotToken: body.hubspotToken || 'REPLACE_WITH_HUBSPOT_PRIVATE_APP_TOKEN',\n      openAiApiKey: body.openAiApiKey || 'REPLACE_WITH_OPENAI_API_KEY',\n      demoMode: body.demoMode !== false\n    },\n    payload: body\n  }\n}];\n"
+      },
+      "id": "b794453f-c0f9-4eb6-8e45-b671b54cd427",
+      "name": "Load Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst root=$input.first().json,p=root.payload||{};\nreturn [{json:{...root,source:{id:p.sourceId||'SRC-101',email:p.email||'pat@example.com',firstName:p.firstName||'Pat',lastName:p.lastName||'Morgan',company:p.company||'Orion',status:p.sourceStatus||'Qualified',updatedAt:p.sourceUpdatedAt||new Date().toISOString()},target:p.target||{id:'CRM-88',email:'pat@example.com',firstName:'Pat',lastName:'Morgan',company:'Orion',status:'New',updatedAt:new Date(Date.now()-86400000).toISOString()}}}];\n"
+      },
+      "id": "df1b6a42-d5dd-4703-b614-37ed8ed4f192",
+      "name": "Create Demo Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json,s=d.source,t=d.target;\nconst fields=['email','firstName','lastName','company','status'];\nconst changes={};\nfor(const f of fields) if(String(s[f]??'')!==String(t?.[f]??'')) changes[f]=s[f];\nlet action='noop';\nif(!t?.id) action='create';\nelse if(Object.keys(changes).length&&new Date(s.updatedAt)>=new Date(t.updatedAt)) action='update';\nelse if(Object.keys(changes).length) action='review_conflict';\nreturn [{json:{...d,result:{action,recordKey:s.email,changes,sourceUpdatedAt:s.updatedAt,targetUpdatedAt:t?.updatedAt||null,syncTimestamp:new Date().toISOString()}}}];\n"
+      },
+      "id": "9b9037e9-4585-4a50-a81b-1762f486c3da",
+      "name": "Resolve CRM Sync Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json;\nreturn [{json:{success:true,demoMode:d.config?.demoMode ?? true,workflow:$workflow.name,result:d.result || d,completedAt:new Date().toISOString()}}];\n"
+      },
+      "id": "34d1b34c-dd9e-4853-b312-ffb92f9b4790",
+      "name": "Execution Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "content": "WHAT IT DOES:\n\nKeeps customer records synchronized across two systems by identifying whether each record should be created, updated, ignored, or reviewed for a conflict.\n\nHOW IT DOES IT:\n\nNormalizes incoming data, compares key fields, evaluates record timestamps, identifies changes, and returns a clear synchronization action with a complete execution summary.\n\nWHY PAY FOR IT:\n\nPrevents duplicate records, outdated overwrites, manual data entry, and costly CRM inconsistencies while providing reusable sync logic that can connect virtually any two business systems.\n",
+        "height": 592,
+        "width": 320,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        720,
+        -368
+      ],
+      "id": "13e23824-afac-4188-9533-6484cbfe41f6",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Demo Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COMPLETE SYSTEMS → CRM Sync Automation Webhook": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Configuration": {
+      "main": [
+        [
+          {
+            "node": "Create Demo Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Demo Input": {
+      "main": [
+        [
+          {
+            "node": "Resolve CRM Sync Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve CRM Sync Action": {
+      "main": [
+        [
+          {
+            "node": "Execution Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
