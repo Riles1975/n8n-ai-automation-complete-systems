@@ -4,6 +4,8 @@ A portfolio of 16 production-ready n8n automation systems covering AI, sales, CR
 
 These systems demonstrate multi-step automation architecture, AI integration, API orchestration, conditional routing, data processing, approval controls, notifications, and reusable business logic.
 
+![n8n AI Automation Complete Systems Overview](complete-systems-overview.png)
+
 ## Complete Systems
 
 | System | Primary Function | Business Value |
