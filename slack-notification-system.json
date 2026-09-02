@@ -1,0 +1,228 @@
+{
+  "name": "COMPLETE SYSTEMS → Slack Notification System",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SETUP + PURPOSE\n\nReceives operational events, assigns severity, formats a consistent Slack message, and prepares delivery. The Slack HTTP node is disabled until a webhook URL is added.",
+        "height": 178,
+        "width": 304
+      },
+      "id": "e679b2e4-4579-4594-907f-d359e3993eb6",
+      "name": "SETUP + PURPOSE",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        304,
+        32
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "dcb27051-5594-42b2-a251-7732b4fa3582",
+      "name": "Manual Demo Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "slack-notification-system",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "a9f8737a-1ad0-452e-a3a1-98952118f325",
+      "name": "COMPLETE SYSTEMS → Slack Notification System Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const SLACK_WEBHOOK_URL =\n  'REPLACE_WITH_SLACK_WEBHOOK_URL';\n\nconst input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\n\nreturn [\n  {\n    json: {\n      config: {\n        companyName:\n          body.companyName || 'ABM Solutions',\n\n        senderName:\n          body.senderName || 'Demo Sender',\n\n        senderEmail:\n          body.senderEmail || 'demo@example.com',\n\n        slackWebhookUrl:\n          body.slackWebhookUrl || SLACK_WEBHOOK_URL,\n\n        crmUrl:\n          body.crmUrl || 'https://www.hubspot.com/products/crm',\n\n        dashboardUrl:\n          body.dashboardUrl || 'https://lookerstudio.google.com/',\n\n        retryWorkflowUrl:\n          body.retryWorkflowUrl || 'https://example.com/configure-retry-webhook',\n\n        demoMode:\n          body.demoMode !== undefined\n            ? body.demoMode\n            : true\n      },\n\n      payload: body\n    }\n  }\n];"
+      },
+      "id": "6c463fa3-d9f1-4325-bba2-15841f1b866c",
+      "name": "Load Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst root=$input.first().json; const p=root.payload||{};\nreturn [{json:{...root,event:{type:p.type||'high_value_lead',title:p.title||'High-value lead qualified',details:p.details||'A new lead scored 92/100.',severity:p.severity||'high',owner:p.owner||'Sales'}}}];\n"
+      },
+      "id": "998f7727-56b6-4724-a815-d262a7e1dcef",
+      "name": "Create Demo Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst event = data.event || {};\n\nconst severity = String(event.severity || 'medium').toLowerCase();\n\nconst severityConfig = {\n  low: {\n    emoji: 'ℹ️',\n    label: 'LOW',\n    color: '#36C5F0'\n  },\n  medium: {\n    emoji: '⚠️',\n    label: 'MEDIUM',\n    color: '#ECB22E'\n  },\n  high: {\n    emoji: '🚨',\n    label: 'HIGH',\n    color: '#E01E5A'\n  },\n  critical: {\n    emoji: '🔥',\n    label: 'CRITICAL',\n    color: '#B00020'\n  }\n};\n\nconst selectedSeverity =\n  severityConfig[severity] || severityConfig.medium;\n\nconst formattedTime = new Date().toLocaleString('en-US', {\n  timeZone: 'America/Chicago',\n  month: 'short',\n  day: 'numeric',\n  year: 'numeric',\n  hour: 'numeric',\n  minute: '2-digit',\n  timeZoneName: 'short'\n});\n\nconst title = event.title || 'Operational Notification';\nconst owner = event.owner || 'Unassigned';\nconst details = event.details || 'No additional details provided.';\nconst companyName = data.config?.companyName || 'ABM Solutions';\n\nconst fallbackText =\n  `${selectedSeverity.emoji} ${selectedSeverity.label} ALERT: ${title}`;\n\nconst slackPayload = {\n  text: fallbackText,\n  attachments: [\n    {\n      color: selectedSeverity.color,\n      blocks: [\n        {\n          type: 'header',\n          text: {\n            type: 'plain_text',\n            text: `${selectedSeverity.emoji} ${selectedSeverity.label} PRIORITY ALERT`,\n            emoji: true\n          }\n        },\n        {\n          type: 'section',\n          text: {\n            type: 'mrkdwn',\n            text: `*${title}*`\n          }\n        },\n        {\n          type: 'section',\n          fields: [\n            {\n              type: 'mrkdwn',\n              text: `*Owner*\\n${owner}`\n            },\n            {\n              type: 'mrkdwn',\n              text: `*Severity*\\n${selectedSeverity.label}`\n            }\n          ]\n        },\n        {\n          type: 'section',\n          text: {\n            type: 'mrkdwn',\n            text: `*Details*\\n${details}`\n          }\n        },\n        {\n          type: 'context',\n          elements: [\n            {\n              type: 'mrkdwn',\n              text: `🕒 ${formattedTime}`\n            },\n            {\n              type: 'mrkdwn',\n              text: `⚙️ Powered by ${companyName}`\n            }\n          ]\n        },\n        {\n          type: 'actions',\n          elements: [\n            {\n              type: 'button',\n              text: {\n                type: 'plain_text',\n                text: '📂 Open CRM',\n                emoji: true\n              },\n              style: 'primary',\n              url: data.config.crmUrl\n            },\n            {\n              type: 'button',\n              text: {\n                type: 'plain_text',\n                text: '📊 Dashboard',\n                emoji: true\n              },\n              url: data.config.dashboardUrl\n            },\n            {\n              type: 'button',\n              text: {\n                type: 'plain_text',\n                text: '🔄 Retry Workflow',\n                emoji: true\n              },\n              url: data.config.retryWorkflowUrl\n            }\n          ]\n        }\n      ]\n    }\n  ]\n};\n\nreturn [\n  {\n    json: {\n      ...data,\n      slackPayload,\n      result: {\n        notificationPrepared: true,\n        severity: selectedSeverity.label,\n        event,\n        buttons: {\n          crm: data.config.crmUrl,\n          dashboard: data.config.dashboardUrl,\n          retry: data.config.retryWorkflowUrl\n        }\n      }\n    }\n  }\n];"
+      },
+      "id": "f822f9cc-75ca-49ef-a07c-4bd10b02dd35",
+      "name": "Format Slack Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.config.slackWebhookUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json.slackPayload) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "d0857c7a-a4c3-4635-ba03-9702c0f3ac85",
+      "name": "Deliver to Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1232,
+        352
+      ],
+      "notesInFlow": true,
+      "notes": "Disabled by default so the workflow runs safely in demo mode. Configure the URL/authentication, then enable."
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json;\nreturn [{json:{success:true,demoMode:d.config?.demoMode ?? true,workflow:$workflow.name,result:d.result || d,completedAt:new Date().toISOString()}}];\n"
+      },
+      "id": "4357c800-e066-4cd4-bfcd-7d8596fe2309",
+      "name": "Execution Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "content": "WHAT IT DOES:\n\nAutomatically turns operational events into clear, prioritized Slack notifications so the right team members can respond quickly.\n\n\nHOW IT DOES IT:\n\nReceives events manually or through a webhook, loads configurable settings, formats the event based on severity, creates a professional Slack alert with key details and action buttons, delivers it to Slack, and records the execution result.\n\n\nWHY PAY FOR IT:\n\nEliminates manual alerting, standardizes team notifications, reduces response time, and gives businesses a reusable notification system that can connect their CRM, dashboards, automations, and other operational tools directly to Slack.\n\n",
+        "height": 704,
+        "width": 320,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        672,
+        -496
+      ],
+      "id": "2959abdb-9430-4e1a-a224-9377c0d43ac3",
+      "name": "Sticky Note3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Demo Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COMPLETE SYSTEMS → Slack Notification System Webhook": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Configuration": {
+      "main": [
+        [
+          {
+            "node": "Create Demo Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Demo Input": {
+      "main": [
+        [
+          {
+            "node": "Format Slack Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slack Message": {
+      "main": [
+        [
+          {
+            "node": "Deliver to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deliver to Slack": {
+      "main": [
+        [
+          {
+            "node": "Execution Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
