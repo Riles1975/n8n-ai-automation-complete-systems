@@ -1,0 +1,180 @@
+{
+  "name": "COMPLETE SYSTEMS → Trigger-Based Outreach System",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SETUP + PURPOSE\n\nDetects a business trigger, checks outreach eligibility, selects the right angle, and generates a timely, relevant message.",
+        "height": 130,
+        "width": 368
+      },
+      "id": "43e98193-b404-4589-ad26-dea53d4aa6bd",
+      "name": "SETUP + PURPOSE",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        192,
+        48
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "97890389-cf05-4088-a20f-d062a14bfe52",
+      "name": "Manual Demo Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "trigger-based-outreach-system",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "4b8bdb04-18b2-4340-b35c-94745bcea4c0",
+      "name": "COMPLETE SYSTEMS → Trigger-Based Outreach System Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\n\nreturn [{\n  json: {\n    config: {\n      companyName: body.companyName || 'ABM Solutions Demo',\n      senderName: body.senderName || 'Demo Sender',\n      senderEmail: body.senderEmail || 'demo@example.com',\n      slackWebhookUrl: body.slackWebhookUrl || 'REPLACE_WITH_SLACK_WEBHOOK_URL',\n      hubspotToken: body.hubspotToken || 'REPLACE_WITH_HUBSPOT_PRIVATE_APP_TOKEN',\n      openAiApiKey: body.openAiApiKey || 'REPLACE_WITH_OPENAI_API_KEY',\n      demoMode: body.demoMode !== false\n    },\n    payload: body\n  }\n}];\n"
+      },
+      "id": "db3feabd-f855-4f56-9a0a-d31bbd4f47bb",
+      "name": "Load Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst root=$input.first().json,p=root.payload||{};\nreturn [{json:{...root,signal:{type:p.type||'new_hiring',company:p.company||'Summit Analytics',firstName:p.firstName||'Riley',role:p.role||'COO',detail:p.detail||'posted three new revenue operations roles',daysOld:Number(p.daysOld||2),contactedRecently:Boolean(p.contactedRecently||false)}}}];\n"
+      },
+      "id": "76f03629-52a5-4ccc-835e-8eee383cc174",
+      "name": "Create Demo Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst s = d.signal;\n\nconst eligible = s.daysOld <= 14 && !s.contactedRecently;\n\nconst angles = {\n  new_hiring: \"Scaling a team often exposes manual handoffs and inconsistent processes.\",\n  funding: \"New capital creates an ideal window to automate before operational complexity compounds.\",\n  leadership_change: \"New leadership often reviews systems, ownership, and reporting workflows.\",\n  expansion: \"Expansion creates pressure on intake, routing, CRM hygiene, and follow-up.\"\n};\n\nconst angle =\n  angles[s.type] ||\n  \"This change may create new workflow and automation priorities.\";\n\nconst reason = eligible\n  ? \"Fresh signal and no recent contact\"\n  : s.contactedRecently\n    ? \"Contact suppressed because recent outreach already occurred\"\n    : \"Contact suppressed because the trigger is more than 14 days old\";\n\nconst result = {\n  eligible,\n  status: eligible ? \"ready_for_outreach\" : \"suppressed\",\n  trigger: s.type,\n  company: s.company,\n  contact: {\n    firstName: s.firstName,\n    role: s.role\n  },\n  reason,\n  subject: null,\n  message: null\n};\n\nif (eligible) {\n  result.subject = `${s.firstName}, a workflow idea for ${s.company}`;\n  result.message = `Hi ${s.firstName},\n\nI noticed ${s.company} ${s.detail}. ${angle}\n\nI build focused n8n systems that reduce manual work and improve visibility without forcing a full-stack replacement.\n\nWould a brief workflow review be useful?\n\nBest,\n${d.config.senderName}`;\n}\n\nreturn [{ json: { ...d, result } }];"
+      },
+      "id": "8553fb2b-e2b1-41db-a006-80691327c75d",
+      "name": "Evaluate Trigger + Draft Outreach",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json;\nreturn [{json:{success:true,demoMode:d.config?.demoMode ?? true,workflow:$workflow.name,result:d.result || d,completedAt:new Date().toISOString()}}];\n"
+      },
+      "id": "f56179c9-d3e6-473b-bd61-0f1842520adb",
+      "name": "Execution Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "content": "WHAT IT DOES:\n\nDetects timely business signals, determines whether outreach is appropriate, and generates a personalized message only for eligible prospects.\n\nHOW IT DOES IT:\n\nAccepts trigger data through a manual or webhook input, checks signal age and recent-contact status, selects a trigger-specific outreach angle, and returns either a ready-to-send message or a suppression result.\n\nWHY PAY FOR IT:\n\nHelps sales teams reach prospects at the right moment, avoid repetitive outreach, reduce manual research, and create more relevant conversations at scale.",
+        "height": 592,
+        "width": 320,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        624,
+        -416
+      ],
+      "id": "907a4aa0-7492-442e-a532-69ee377c9c9b",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Demo Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COMPLETE SYSTEMS → Trigger-Based Outreach System Webhook": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Configuration": {
+      "main": [
+        [
+          {
+            "node": "Create Demo Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Demo Input": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Trigger + Draft Outreach",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Trigger + Draft Outreach": {
+      "main": [
+        [
+          {
+            "node": "Execution Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
