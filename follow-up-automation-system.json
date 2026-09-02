@@ -1,0 +1,242 @@
+{
+  "name": "COMPLETE SYSTEMS → Follow-Up Automation System",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "9a28e10a-492b-473e-8b4f-1540407c92f7",
+      "name": "Manual Demo Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        208,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "follow-up-automation-system",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "a2e8babd-1c69-4952-b0ee-58d1cb205188",
+      "name": "COMPLETE SYSTEMS → Follow-Up Automation System Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        208,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\n\nreturn [{\n  json: {\n    config: {\n      companyName: body.companyName || 'ABM Solutions Demo',\n      senderName: body.senderName || 'Demo Sender',\n      senderEmail: body.senderEmail || 'demo@example.com',\n      slackWebhookUrl: body.slackWebhookUrl || 'REPLACE_WITH_SLACK_WEBHOOK_URL',\n      hubspotToken: body.hubspotToken || 'REPLACE_WITH_HUBSPOT_PRIVATE_APP_TOKEN',\n      openAiApiKey: body.openAiApiKey || 'REPLACE_WITH_OPENAI_API_KEY',\n      demoMode: body.demoMode !== false\n    },\n    payload: body\n  }\n}];\n"
+      },
+      "id": "3992f0a1-0681-477e-a27c-7e60571383f0",
+      "name": "Load Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const root = $input.first().json;\nconst payload = root.payload || {};\n\nconst demoContact = {\n  firstName: 'Casey',\n  lastName: 'Morgan',\n  email: 'casey@example.com',\n  company: 'Brightline',\n  jobTitle: 'Operations Director',\n  lastContactAt: new Date(Date.now() - 4 * 86400000).toISOString(),\n  attempts: 1,\n  replied: false,\n  optedOut: false,\n  leadStatus: 'contacted',\n  source: 'demo'\n};\n\nconst contact = {\n  firstName: payload.firstName || demoContact.firstName,\n  lastName: payload.lastName || demoContact.lastName,\n  email: payload.email || demoContact.email,\n  company: payload.company || demoContact.company,\n  jobTitle: payload.jobTitle || demoContact.jobTitle,\n  lastContactAt: payload.lastContactAt || demoContact.lastContactAt,\n  attempts: Number(payload.attempts ?? demoContact.attempts),\n  replied: Boolean(payload.replied ?? demoContact.replied),\n  optedOut: Boolean(payload.optedOut ?? demoContact.optedOut),\n  leadStatus: payload.leadStatus || demoContact.leadStatus,\n  source: payload.source || demoContact.source\n};\n\nreturn [\n  {\n    json: {\n      ...root,\n      contact\n    }\n  }\n];"
+      },
+      "id": "30a041d3-7fba-4592-85a5-9b5dee3a3158",
+      "name": "Create Demo Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json,c=d.contact;\nconst days=Math.floor((Date.now()-new Date(c.lastContactAt).getTime())/86400000);\nlet action='wait';\nif(c.optedOut) action='stop';\nelse if(c.replied) action='handoff';\nelse if(c.attempts>=4) action='close_sequence';\nelse if(days>=3) action='send_follow_up';\nconst nextAttempt=c.attempts+1;\nreturn [{json:{...d,followUp:{action,daysSinceContact:days,nextAttempt}}}];\n"
+      },
+      "id": "eef95a1e-b258-4dea-83c3-5f43e1c9d6e5",
+      "name": "Determine Follow-Up Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const previous = $('Determine Follow-Up Action').first().json;\nconst ai = $input.first().json;\n\nconst aiText =\n  ai.output?.[0]?.content?.[0]?.text ||\n  ai.content?.[0]?.text ||\n  ai.text ||\n  '';\n\nconst subjectMatch = aiText.match(/Subject:\\s*(.+)/i);\n\nconst subject = subjectMatch\n  ? subjectMatch[1].trim()\n  : `Follow-up for ${previous.contact.company}`;\n\nconst body = aiText.replace(/Subject:.*?\\n/i, '').trim();\n\nreturn [\n  {\n    json: {\n      ...previous,\n      result: {\n        action: previous.followUp.action,\n        sendEligible: previous.followUp.action === 'send_follow_up',\n        subject,\n        message: body,\n        generatedBy: 'OpenAI GPT-5',\n        generatedAt: new Date().toISOString()\n      }\n    }\n  }\n];"
+      },
+      "id": "fcb35b9a-f126-496b-a023-a2ad60dc5079",
+      "name": "Draft Follow-Up Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1216,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json;\nreturn [{json:{success:true,demoMode:d.config?.demoMode ?? true,workflow:$workflow.name,result:d.result || d,completedAt:new Date().toISOString()}}];\n"
+      },
+      "id": "0033d0af-7f45-4f29-ba88-1e03906f6264",
+      "name": "Execution Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-5",
+          "mode": "list",
+          "cachedResultName": "GPT-5"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=={{\n`You are an expert B2B sales copywriter.\n\nGenerate a professional follow-up email using the following information.\n\nFirst Name: ${$json.contact.firstName}\nCompany: ${$json.contact.company}\nJob Title: ${$json.contact.jobTitle}\n\nFollow-up Attempt:\n${$json.contact.attempts}\n\nDays Since Last Contact:\n${$json.followUp.daysSinceContact}\n\nRecommended Action:\n${$json.followUp.action}\n\nRequirements:\n\n• Subject line\n• Email body\n• Professional but friendly tone\n• 100-150 words\n• Clear call-to-action\n• No markdown\n• Return ONLY the email text.`\n}}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        928,
+        688
+      ],
+      "id": "28e0c7ee-4750-4ef4-998e-704fa224a759",
+      "name": "Message a model"
+    },
+    {
+      "parameters": {
+        "content": "## SETUP + PURPOSE\n\n**PURPOSE:** Automates sales follow-up decision-making and message creation by determining when a prospect should be contacted again and generating a personalized AI follow-up.\n\n**SETUP:** Configure your OpenAI credentials, customize the company/sender information in Load Configuration, and connect your preferred CRM, email, or outreach tools when deploying the template.\n\n",
+        "height": 418,
+        "width": 272
+      },
+      "id": "f623e017-fc86-47f3-9f6a-f24dda1da1e7",
+      "name": "SETUP + PURPOSE1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        400,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## WHAT IT DOES:\n\nAutomatically evaluates each prospect's follow-up status, determines whether outreach should continue, wait, stop, or be handed off, and generates a personalized follow-up message when additional outreach is appropriate.\n\n## HOW IT DOES IT:\n\nThe workflow accepts prospect data through a webhook or manual demo trigger, loads the system configuration, standardizes the contact information, and analyzes factors such as days since last contact, previous attempts, replies, and opt-outs. It then determines the appropriate follow-up action and uses OpenAI to generate a personalized sales message based on the prospect, company, and follow-up stage. The final output is formatted into a structured result that can be connected to email, CRM, Slack, or other sales systems.\n\n## WHY PAY FOR IT:\n\nBusinesses pay for this system because it eliminates repetitive follow-up work, reduces missed opportunities, creates consistent and personalized outreach at scale, and helps sales teams focus their time on qualified conversations instead of manually tracking prospects and writing follow-up emails.\n\n",
+        "height": 960,
+        "width": 320,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        736,
+        -384
+      ],
+      "id": "3cedce55-a91f-4346-b9b7-4278860af55d",
+      "name": "Sticky Note3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Demo Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COMPLETE SYSTEMS → Follow-Up Automation System Webhook": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Configuration": {
+      "main": [
+        [
+          {
+            "node": "Create Demo Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Demo Input": {
+      "main": [
+        [
+          {
+            "node": "Determine Follow-Up Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Determine Follow-Up Action": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft Follow-Up Message": {
+      "main": [
+        [
+          {
+            "node": "Execution Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Draft Follow-Up Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
