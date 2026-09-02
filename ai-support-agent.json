@@ -1,0 +1,204 @@
+{
+  "name": "COMPLETE SYSTEMS → AI Support Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SETUP + PURPOSE\n\nClassifies support requests, detects urgency and sentiment, searches a built-in knowledge base, drafts a response, and decides whether human escalation is required.",
+        "height": 178,
+        "width": 320
+      },
+      "id": "66425ae4-9b51-4cae-a5d9-635b5776a4c5",
+      "name": "SETUP + PURPOSE",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        128,
+        160
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "e19d2972-ea96-49be-bb7c-eb95af7fa53e",
+      "name": "Manual Demo Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        128,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-support-agent",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "8b316bb6-c265-4a25-afc1-0d68fa7619c3",
+      "name": "COMPLETE SYSTEMS → AI Support Agent Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        128,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\n\nreturn [{\n  json: {\n    config: {\n      companyName: body.companyName || 'ABM Solutions Demo',\n      senderName: body.senderName || 'Demo Sender',\n      senderEmail: body.senderEmail || 'demo@example.com',\n      slackWebhookUrl: body.slackWebhookUrl || 'REPLACE_WITH_SLACK_WEBHOOK_URL',\n      hubspotToken: body.hubspotToken || 'REPLACE_WITH_HUBSPOT_PRIVATE_APP_TOKEN',\n      openAiApiKey: body.openAiApiKey || 'REPLACE_WITH_OPENAI_API_KEY',\n      demoMode: body.demoMode !== false\n    },\n    payload: body\n  }\n}];\n"
+      },
+      "id": "5ea15261-0d43-46b2-9b86-2255cb04bf22",
+      "name": "Load Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst root=$input.first().json,p=root.payload||{};\nreturn [{json:{...root,ticket:{id:p.id||`TKT-${Date.now()}`,customer:p.customer||'Jordan',subject:p.subject||'Webhook workflow is not triggering',message:p.message||'I submitted the form twice but the workflow never started. This is blocking our sales team.',plan:p.plan||'Business'}}}];\n"
+      },
+      "id": "23976cc9-efdc-4030-9f88-0401ca80a149",
+      "name": "Create Demo Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json,t=d.ticket,text=`${t.subject} ${t.message}`.toLowerCase();\nlet category='general';\nif(/webhook|api|integration|workflow|error|trigger/.test(text)) category='technical';\nelse if(/invoice|billing|charge|refund/.test(text)) category='billing';\nelse if(/password|login|access/.test(text)) category='access';\nconst urgent=/blocking|urgent|down|cannot|can't|failed|twice/.test(text);\nconst sentiment=/frustrated|angry|unacceptable|blocking/.test(text)?'negative':'neutral';\nreturn [{json:{...d,triage:{category,urgent,sentiment,priority:urgent?'high':'normal'}}}];\n"
+      },
+      "id": "1b592a93-58d7-40ed-88ed-6c3298de5554",
+      "name": "Triage Ticket",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        864,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json,t=d.ticket,q=d.triage;\nconst kb={\n technical:'Please confirm the workflow is active, use the production webhook URL, and verify the request method matches the Webhook node. Then review the latest execution for an error.',\n billing:'Please share the invoice number or charge date so the billing record can be reviewed.',\n access:'Please use the password reset flow and confirm that the account email matches the invited address.',\n general:'Please provide the exact steps, expected outcome, and any error message.'\n};\nconst escalate=q.urgent||q.sentiment==='negative';\nreturn [{json:{...d,result:{ticketId:t.id,category:q.category,priority:q.priority,escalate,response:`Hi ${t.customer},\\n\\nThanks for reporting this. ${kb[q.category]}\\n\\n${escalate?'I have also flagged this for priority human review.':'Reply with the requested details and we will continue troubleshooting.'}\\n\\nBest,\\nSupport Team`,recommendedOwner:escalate?'Senior Support':'Support Queue'}}}];\n"
+      },
+      "id": "7434b181-88ae-4007-93c5-77f2786c3d58",
+      "name": "Generate Support Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json;\nreturn [{json:{success:true,demoMode:d.config?.demoMode ?? true,workflow:$workflow.name,result:d.result || d,completedAt:new Date().toISOString()}}];\n"
+      },
+      "id": "9e499851-fd5e-499f-9057-8149aeb53343",
+      "name": "Execution Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "content": "WHAT IT DOES:\n\nAutomatically analyzes incoming support tickets, identifies the issue category, detects urgency and sentiment, drafts a helpful response, and determines whether human escalation is needed.\n\nHOW IT DOES IT:\n\nReceives requests through a webhook, standardizes the ticket data, applies rule-based triage, selects guidance from a built-in knowledge base, generates a customer-ready response, assigns an owner, and returns a structured result.\n\nWHY PAY FOR IT:\n\nReduces response time, creates consistent support quality, prioritizes critical issues automatically, lowers repetitive work, and helps support teams handle more tickets without increasing headcount.",
+        "height": 672,
+        "width": 320,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        528,
+        -336
+      ],
+      "id": "1cf0685a-e0d9-4798-bfb0-e9e159dfde29",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Demo Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COMPLETE SYSTEMS → AI Support Agent Webhook": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Configuration": {
+      "main": [
+        [
+          {
+            "node": "Create Demo Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Demo Input": {
+      "main": [
+        [
+          {
+            "node": "Triage Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Triage Ticket": {
+      "main": [
+        [
+          {
+            "node": "Generate Support Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Support Response": {
+      "main": [
+        [
+          {
+            "node": "Execution Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
