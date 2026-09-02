@@ -1,0 +1,226 @@
+{
+  "name": "COMPLETE SYSTEMS → AI Email Personalization Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "content": " SETUP + PURPOSE\n\nConverts prospect and company context into a relevant subject line, personalized opener, value proposition, call to action, and complete email.",
+        "height": 210,
+        "width": 304
+      },
+      "id": "b72c0574-a563-4a4b-97a1-bf400ac9f550",
+      "name": "SETUP + PURPOSE",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        368,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b33c996c-b24d-4c0e-af5a-c30ec52db08a",
+      "name": "Manual Demo Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-email-personalization-engine",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "a346ec06-ed7c-47b6-b207-fe8659e695db",
+      "name": "COMPLETE SYSTEMS → AI Email Personalization Engine Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\n\nreturn [{\n  json: {\n    config: {\n      companyName: body.companyName || 'ABM Solutions Demo',\n      senderName: body.senderName || 'Demo Sender',\n      senderEmail: body.senderEmail || 'demo@example.com',\n      slackWebhookUrl: body.slackWebhookUrl || 'REPLACE_WITH_SLACK_WEBHOOK_URL',\n      hubspotToken: body.hubspotToken || 'REPLACE_WITH_HUBSPOT_PRIVATE_APP_TOKEN',\n      openAiApiKey: body.openAiApiKey || 'REPLACE_WITH_OPENAI_API_KEY',\n      demoMode: body.demoMode !== false\n    },\n    payload: body\n  }\n}];\n"
+      },
+      "id": "e6704dde-3e22-4168-aeb5-0fa1f3a0ad75",
+      "name": "Load Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst root=$input.first().json,p=root.payload||{};\nreturn [{json:{...root,prospect:{firstName:p.firstName||'Taylor',company:p.company||'Vertex Logistics',role:p.role||'Director of Revenue Operations',industry:p.industry||'logistics',signal:p.signal||'recently expanded the sales team',painPoint:p.painPoint||'manual CRM updates and inconsistent follow-up'}}}];\n"
+      },
+      "id": "578ff1f4-0398-4f36-8f69-a9d832063929",
+      "name": "Create Demo Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nreturn [\n  {\n    json: {\n      success: d.success === true,\n      workflow: $workflow.name,\n      model: d.model,\n      result: {\n        subject: d.subject,\n        opener: d.opener,\n        valueProposition: d.valueProposition,\n        cta: d.cta,\n        email: d.email\n      },\n      generatedAt: d.generatedAt,\n      completedAt: new Date().toISOString()\n    }\n  }\n];"
+      },
+      "id": "903da85a-2b5c-4be6-9c77-8b3c525e1d0e",
+      "name": "Execution Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "content": "WHAT IT DOES: \n\nThis workflow automatically generates highly personalized sales emails using AI. \n\n\nHOW IT DOES IT: \n\nIt takes key information about a prospect, such as their name, company, role, industry, recent business activity, and pain points, sends that information to GPT-5 to create a customized subject line, opening, value proposition, call to action, and complete email, then formats the response into a clean, structured output that can be sent, logged, or passed to other business systems. \n\n\nWHY PAY FOR IT: \n\nIt eliminates the time and effort of manually writing personalized outreach, allowing sales teams to produce high-quality emails in seconds, increase response rates, scale outbound prospecting, and free employees to focus on closing deals instead of writing repetitive emails.",
+        "height": 704,
+        "width": 368,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        768,
+        -496
+      ],
+      "id": "e591f439-59f6-4d3f-8ccc-47aa7d29bb62",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-5-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=You are an elite B2B sales copywriter.\n\nUsing the prospect information below, generate a highly personalized cold outreach email.\n\nProspect Information\n\nFirst Name: {{$json.prospect.firstName}}\n\nCompany: {{$json.prospect.company}}\n\nRole: {{$json.prospect.role}}\n\nIndustry: {{$json.prospect.industry}}\n\nBuying Signal: {{$json.prospect.signal}}\n\nPain Point: {{$json.prospect.painPoint}}\n\nRequirements:\n\n• Write a compelling subject line.\n• Write a personalized opening sentence.\n• Explain how AI automation and n8n workflows solve their specific problem.\n• Keep the email between 125 and 175 words.\n• Sound professional, conversational, and natural.\n• Never sound overly salesy.\n• End with a simple CTA asking for a 15-minute conversation.\n\nReturn ONLY valid JSON using this exact structure:\n\n{\n  \"subject\": \"\",\n  \"opener\": \"\",\n  \"valueProposition\": \"\",\n  \"cta\": \"\",\n  \"email\": \"\"\n}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "textFormat": {
+            "textOptions": {
+              "type": "json_schema",
+              "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"subject\": {\n      \"type\": \"string\",\n      \"description\": \"Compelling personalized subject line\"\n    },\n    \"opener\": {\n      \"type\": \"string\",\n      \"description\": \"Personalized opening sentence\"\n    },\n    \"valueProposition\": {\n      \"type\": \"string\",\n      \"description\": \"Short value proposition explaining how the solution addresses the prospect's pain point\"\n    },\n    \"cta\": {\n      \"type\": \"string\",\n      \"description\": \"Simple call to action requesting a 15-minute meeting\"\n    },\n    \"email\": {\n      \"type\": \"string\",\n      \"description\": \"Complete outreach email\"\n    }\n  },\n  \"required\": [\n    \"subject\",\n    \"opener\",\n    \"valueProposition\",\n    \"cta\",\n    \"email\"\n  ],\n  \"additionalProperties\": false\n}",
+              "strict": true
+            }
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        928,
+        352
+      ],
+      "id": "96eb2dc0-ef2a-4271-bd24-0afd425ed5fe",
+      "name": "Message a model"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\n\n// Extract the structured AI response\nconst ai = response.output[0].content[0].text;\n\nreturn [\n  {\n    json: {\n      success: true,\n      subject: ai.subject,\n      opener: ai.opener,\n      valueProposition: ai.valueProposition,\n      cta: ai.cta,\n      email: ai.email,\n      generatedAt: new Date().toISOString(),\n      model: \"gpt-5-mini\"\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        352
+      ],
+      "id": "a95d7fdc-c7ad-466b-867e-a911ca51e472",
+      "name": "Extract AI Output"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Demo Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COMPLETE SYSTEMS → AI Email Personalization Engine Webhook": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Configuration": {
+      "main": [
+        [
+          {
+            "node": "Create Demo Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Demo Input": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Extract AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract AI Output": {
+      "main": [
+        [
+          {
+            "node": "Execution Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
