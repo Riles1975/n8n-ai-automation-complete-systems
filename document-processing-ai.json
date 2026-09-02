@@ -1,0 +1,180 @@
+{
+  "name": "COMPLETE SYSTEMS → Document Processing AI",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SETUP + PURPOSE\n\nExtracts structured information from document text, classifies the document, finds key entities, and flags missing or risky content.",
+        "height": 178,
+        "width": 304
+      },
+      "id": "3351874a-859a-4ee8-b144-d9564678f4a2",
+      "name": "SETUP + PURPOSE",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        160,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "4e68f8bb-2d1c-456f-9262-9039c3d7838f",
+      "name": "Manual Demo Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "document-processing-ai",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "04849078-65cb-4956-96c1-be0dd9bc256a",
+      "name": "COMPLETE SYSTEMS → Document Processing AI Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\n\nreturn [{\n  json: {\n    config: {\n      companyName: body.companyName || 'ABM Solutions Demo',\n      senderName: body.senderName || 'Demo Sender',\n      senderEmail: body.senderEmail || 'demo@example.com',\n      slackWebhookUrl: body.slackWebhookUrl || 'REPLACE_WITH_SLACK_WEBHOOK_URL',\n      hubspotToken: body.hubspotToken || 'REPLACE_WITH_HUBSPOT_PRIVATE_APP_TOKEN',\n      openAiApiKey: body.openAiApiKey || 'REPLACE_WITH_OPENAI_API_KEY',\n      demoMode: body.demoMode !== false\n    },\n    payload: body\n  }\n}];\n"
+      },
+      "id": "e3b3170c-382c-45bb-8724-1100c675f0f6",
+      "name": "Load Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst root=$input.first().json,p=root.payload||{};\nconst text=p.text||`INVOICE 1048\nVendor: Atlas Software LLC\nInvoice Date: 2026-07-18\nDue Date: 2026-08-17\nTotal Due: $4,250.00\nDescription: Annual automation platform subscription.\nPayment terms: Net 30.`;\nreturn [{json:{...root,document:{fileName:p.fileName||'invoice-1048.txt',text}}}];\n"
+      },
+      "id": "b1804de8-d072-4ffa-a4a5-36b72114e4be",
+      "name": "Create Demo Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json,text=d.document.text;\nconst type=/invoice/i.test(text)?'invoice':/agreement|contract/i.test(text)?'contract':/resume|experience/i.test(text)?'resume':'general';\nconst money=[...text.matchAll(/\\$\\s?[\\d,]+(?:\\.\\d{2})?/g)].map(m=>m[0]);\nconst dates=[...text.matchAll(/\\b\\d{4}-\\d{2}-\\d{2}\\b/g)].map(m=>m[0]);\nconst emails=[...text.matchAll(/[^\\s@]+@[^\\s@]+\\.[^\\s@]+/g)].map(m=>m[0]);\nconst lines=text.split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);\nreturn [{json:{...d,result:{documentType:type,fileName:d.document.fileName,entities:{amounts:money,dates,emails},keyLines:lines.slice(0,10),flags:{missingDate:dates.length===0,missingAmount:type==='invoice'&&money.length===0},processedAt:new Date().toISOString()}}}];\n"
+      },
+      "id": "fdf5bd6d-7c53-4a23-9e9c-4127a9989249",
+      "name": "Classify + Extract Document",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json;\nreturn [{json:{success:true,demoMode:d.config?.demoMode ?? true,workflow:$workflow.name,result:d.result || d,completedAt:new Date().toISOString()}}];\n"
+      },
+      "id": "bdc3940c-4344-4e2d-9926-e5dd047710aa",
+      "name": "Execution Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "content": "WHAT IT DOES:\n\nClassifies document text, extracts key information, and flags missing or risky content.\n\nHOW IT DOES IT:\n\nAccepts documents through a manual trigger or webhook, identifies the document type, extracts amounts, dates, emails, and key lines, then returns a structured JSON summary.\n\nWHY PAY FOR IT:\n\nReduces manual document review, catches incomplete records, and converts unstructured business documents into automation-ready data within seconds.",
+        "height": 544,
+        "width": 320,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        544,
+        -368
+      ],
+      "id": "2b5b4f69-5059-4bdf-b085-12a42274a818",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Demo Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COMPLETE SYSTEMS → Document Processing AI Webhook": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Configuration": {
+      "main": [
+        [
+          {
+            "node": "Create Demo Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Demo Input": {
+      "main": [
+        [
+          {
+            "node": "Classify + Extract Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify + Extract Document": {
+      "main": [
+        [
+          {
+            "node": "Execution Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
