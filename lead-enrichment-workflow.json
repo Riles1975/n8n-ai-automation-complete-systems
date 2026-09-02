@@ -1,0 +1,180 @@
+{
+  "name": "COMPLETE SYSTEMS → Lead Enrichment Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SETUP + PURPOSE\n\nNormalizes a lead, infers company domain, adds firmographic and role-based signals, calculates fit, and creates an enrichment record ready for a CRM.",
+        "height": 178,
+        "width": 288
+      },
+      "id": "8af0b4cb-af55-4cdb-9df9-e2b1b5cd14cf",
+      "name": "SETUP + PURPOSE",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        272,
+        -16
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "e9a26952-c8bd-4143-8d1d-bd1913df6e32",
+      "name": "Manual Demo Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-enrichment-workflow",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "360f6cf3-7739-4aed-9b76-eee6402ffc60",
+      "name": "COMPLETE SYSTEMS → Lead Enrichment Workflow Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\n\nreturn [{\n  json: {\n    config: {\n      companyName: body.companyName || 'ABM Solutions Demo',\n      senderName: body.senderName || 'Demo Sender',\n      senderEmail: body.senderEmail || 'demo@example.com',\n      slackWebhookUrl: body.slackWebhookUrl || 'REPLACE_WITH_SLACK_WEBHOOK_URL',\n      hubspotToken: body.hubspotToken || 'REPLACE_WITH_HUBSPOT_PRIVATE_APP_TOKEN',\n      openAiApiKey: body.openAiApiKey || 'REPLACE_WITH_OPENAI_API_KEY',\n      demoMode: body.demoMode !== false\n    },\n    payload: body\n  }\n}];\n"
+      },
+      "id": "ddea8e5c-6f4e-432c-b420-86919a298373",
+      "name": "Load Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst root=$input.first().json,p=root.payload||{};\nreturn [{json:{...root,lead:{firstName:p.firstName||'Avery',lastName:p.lastName||'Stone',email:p.email||'avery@northstar.example',company:p.company||'Northstar',title:p.title||'VP Operations',employeeCount:Number(p.employeeCount||220),industry:p.industry||'B2B SaaS'}}}];\n"
+      },
+      "id": "4758d6d4-cbd5-4c21-8161-edd1fd9bd17d",
+      "name": "Create Demo Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json,l=d.lead;\nconst domain=l.email.split('@')[1]||'';\nconst seniority=/chief|cxo|vp|vice president/i.test(l.title)?'executive':/director|head/i.test(l.title)?'director':'individual';\nlet score=25+(l.employeeCount>=50?20:0)+(l.employeeCount>=200?15:0)+(seniority==='executive'?30:seniority==='director'?20:5);\nscore=Math.min(score,100);\nreturn [{json:{...d,result:{...l,domain,seniority,companySize:l.employeeCount>=500?'enterprise':l.employeeCount>=50?'mid-market':'small-business',fitScore:score,fitTier:score>=80?'A':score>=60?'B':'C',enrichedAt:new Date().toISOString()}}}];\n"
+      },
+      "id": "ea53a2b0-feff-4714-b7f5-3555d6ad2235",
+      "name": "Enrich + Score Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json;\nreturn [{json:{success:true,demoMode:d.config?.demoMode ?? true,workflow:$workflow.name,result:d.result || d,completedAt:new Date().toISOString()}}];\n"
+      },
+      "id": "352ff1c9-444d-40a4-96bc-c4c6de965f26",
+      "name": "Execution Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "content": "WHAT IT DOES:\n\nTransforms raw lead data into a standardized, CRM-ready enrichment record with company, seniority, market segment, fit score, and priority tier.\n\nHOW IT DOES IT:\n\nReceives leads through a webhook or manual demo, normalizes the fields, derives company and role signals, applies configurable scoring rules, and returns structured JSON.\n\nWHY PAY FOR IT:\n\nEliminates manual lead research and scoring, improves CRM data quality, and helps sales teams prioritize the prospects most likely to convert.",
+        "height": 544,
+        "width": 320,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        624,
+        -384
+      ],
+      "id": "062c1d93-6412-4c08-b516-9f407afffa26",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Demo Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COMPLETE SYSTEMS → Lead Enrichment Workflow Webhook": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Configuration": {
+      "main": [
+        [
+          {
+            "node": "Create Demo Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Demo Input": {
+      "main": [
+        [
+          {
+            "node": "Enrich + Score Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich + Score Lead": {
+      "main": [
+        [
+          {
+            "node": "Execution Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
