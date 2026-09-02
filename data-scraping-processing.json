@@ -1,0 +1,180 @@
+{
+  "name": "COMPLETE SYSTEMS → Data Scraping + Processing",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "e1db96f8-72b6-462b-ac56-d27d53ff5bca",
+      "name": "Manual Demo Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "data-scraping-processing",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "45fcd221-4ec7-4f7f-95bc-e9d6950c39b4",
+      "name": "COMPLETE SYSTEMS → Data Scraping + Processing Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\n\nreturn [{\n  json: {\n    config: {\n      workflowName: 'Data Scraping + Processing',\n      companyName: body.companyName || 'ABM Solutions Demo',\n      sourceUrl: body.sourceUrl || '',\n      demoMode: body.demoMode !== false\n    },\n    payload: body\n  }\n}];"
+      },
+      "id": "168ce2d7-5a88-4233-b374-e93f309cbda2",
+      "name": "Load Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst suppliedRecords = data.payload?.records;\n\nconst demoRecords = [\n  {\n    name: 'Acme Manufacturing',\n    website: 'https://acme.example',\n    email: 'sales@acme.example',\n    employees: '120'\n  },\n  {\n    name: ' Acme Manufacturing ',\n    website: 'https://acme.example/',\n    email: 'SALES@ACME.EXAMPLE',\n    employees: 120\n  },\n  {\n    name: 'Nova Labs',\n    website: 'nova.example',\n    email: 'hello@nova.example',\n    employees: '45'\n  },\n  {\n    name: 'Summit Logistics',\n    website: 'summit.example',\n    email: 'invalid-email',\n    employees: '250'\n  },\n  {\n    name: '',\n    website: 'https://unknown.example',\n    email: 'contact@unknown.example',\n    employees: '30'\n  }\n];\n\nconst records =\n  Array.isArray(suppliedRecords) && suppliedRecords.length > 0\n    ? suppliedRecords\n    : demoRecords;\n\nreturn [{\n  json: {\n    ...data,\n    records\n  }\n}];"
+      },
+      "id": "c8d5ce74-6086-4d05-a693-59daeb64155d",
+      "name": "Create Demo Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst records = Array.isArray(data.records) ? data.records : [];\n\nconst validRecords = [];\nconst rejectedRecords = [];\n\nfor (const record of records) {\n  const name = String(record.name || '').trim();\n  const email = String(record.email || '').trim().toLowerCase();\n\n  const employees = Math.max(\n    0,\n    Number.parseInt(\n      String(record.employees || '0').replace(/,/g, ''),\n      10\n    ) || 0\n  );\n\n  let website = String(record.website || '').trim().toLowerCase();\n\n  if (website && !/^https?:\\/\\//i.test(website)) {\n    website = `https://${website}`;\n  }\n\n  website = website.replace(/\\/+$/, '');\n\n  const validEmail =\n    /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);\n\n  const validWebsite =\n    /^https?:\\/\\/[a-z0-9.-]+\\.[a-z]{2,}(?:[/:?#]|$)/i.test(website);\n\n  if (!name || !validEmail || !validWebsite) {\n    rejectedRecords.push({\n      originalRecord: record,\n      rejectionReason: !name\n        ? 'Missing name'\n        : !validEmail\n          ? 'Invalid email'\n          : 'Invalid website'\n    });\n\n    continue;\n  }\n\n  validRecords.push({\n    name,\n    website,\n    email,\n    employees\n  });\n}\n\nconst uniqueRecords = new Map();\n\nfor (const record of validRecords) {\n  const duplicateKey = `${record.website}|${record.email}`;\n\n  if (!uniqueRecords.has(duplicateKey)) {\n    uniqueRecords.set(duplicateKey, record);\n  }\n}\n\nconst cleanedRecords = [...uniqueRecords.values()];\n\nreturn [{\n  json: {\n    ...data,\n    result: {\n      records: cleanedRecords,\n      rejectedRecords,\n      inputCount: records.length,\n      outputCount: cleanedRecords.length,\n      duplicatesRemoved: validRecords.length - cleanedRecords.length,\n      invalidRecordsRemoved: rejectedRecords.length\n    }\n  }\n}];"
+      },
+      "id": "dffdac8d-deb8-4e15-939a-f2182f11ce79",
+      "name": "Clean + Validate Records",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json;\nreturn [{json:{success:true,demoMode:d.config?.demoMode ?? true,workflow:$workflow.name,result:d.result || d,completedAt:new Date().toISOString()}}];\n"
+      },
+      "id": "ea06d891-239a-4251-8b24-a1eade6ea412",
+      "name": "Execution Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "content": "WHAT IT DOES: \n\nTransforms raw scraped or imported business records into a clean, standardized, analysis-ready dataset.\n \n\nHOW IT DOES IT: \n\nAccepts records through a webhook or manual demo, standardizes names, URLs, emails, and employee counts, removes duplicates, rejects invalid records with clear reasons, and returns a structured processing summary.\n\n\nWHY PAY FOR IT: \n\nIt eliminates repetitive manual data cleanup, improves CRM and outreach data quality, prevents teams from wasting time on duplicates or invalid contacts, and creates a reusable processing layer for lead generation, research, reporting, and automation systems.",
+        "height": 672,
+        "width": 320,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        752,
+        -400
+      ],
+      "id": "779ca24d-1741-4fab-8c13-6010820b1608",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## SETUP + PURPOSE\n\nAccepts scraped records or sample HTML-derived data, cleans and deduplicates records, validates URLs and emails, and produces an analysis-ready dataset.",
+        "height": 210,
+        "width": 272
+      },
+      "id": "0c01fbac-f5fb-4cc0-92d6-df6773d5974a",
+      "name": "SETUP + PURPOSE",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        416,
+        64
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Demo Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COMPLETE SYSTEMS → Data Scraping + Processing Webhook": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Configuration": {
+      "main": [
+        [
+          {
+            "node": "Create Demo Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Demo Input": {
+      "main": [
+        [
+          {
+            "node": "Clean + Validate Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean + Validate Records": {
+      "main": [
+        [
+          {
+            "node": "Execution Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
