@@ -1,0 +1,452 @@
+{
+  "name": "COMPLETE SYSTEMS --> Lead Gen + AI Personalized Outreach + HubSpot + Slack",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "62881f69-5b2b-41c9-a1c9-7c004dfe9e94",
+      "name": "Start Manually",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        608,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "apolloApiKey",
+              "value": "PASTE_APOLLO_API_KEY_HERE"
+            },
+            {
+              "name": "openAiApiKey",
+              "value": "PASTE_OPENAI_API_KEY_HERE"
+            },
+            {
+              "name": "sendgridApiKey",
+              "value": "PASTE_SENDGRID_API_KEY_HERE"
+            },
+            {
+              "name": "hubspotAccessToken",
+              "value": "PASTE_HUBSPOT_PRIVATE_APP_TOKEN_HERE"
+            },
+            {
+              "name": "slackWebhookUrl",
+              "value": "PASTE_SLACK_WEBHOOK_URL_HERE"
+            },
+            {
+              "name": "fromEmail",
+              "value": "demo@example.com"
+            },
+            {
+              "name": "fromName",
+              "value": "Demo Sender"
+            },
+            {
+              "name": "targetTitle",
+              "value": "Founder"
+            },
+            {
+              "name": "targetIndustry",
+              "value": "health wellness and fitness"
+            },
+            {
+              "name": "targetLocation",
+              "value": "United States"
+            },
+            {
+              "name": "offer",
+              "value": "AI lead generation and personalized outreach automation"
+            },
+            {
+              "name": "calendarLink",
+              "value": "https://calendly.com/demo/30min"
+            }
+          ],
+          "number": [
+            {
+              "name": "leadLimit",
+              "value": 3
+            },
+            {
+              "name": "delaySeconds",
+              "value": 45
+            }
+          ],
+          "boolean": [
+            {
+              "name": "dryRun",
+              "value": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7d540198-bf62-4d88-a0dc-885a324e7005",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        768,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const people = $json.people || $json.contacts || [];\nconst config = $('Config').first().json;\n\nreturn people\n  .filter(p => p.email || p.email_status === 'verified')\n  .slice(0, config.leadLimit)\n  .map(p => ({\n    json: {\n      firstName: p.first_name || '',\n      lastName: p.last_name || '',\n      fullName: p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim(),\n      email: p.email || '',\n      title: p.title || '',\n      company: p.organization?.name || '',\n      website: p.organization?.website_url || '',\n      linkedin: p.linkedin_url || '',\n      industry: config.targetIndustry,\n      offer: config.offer,\n      calendarLink: config.calendarLink,\n      fromEmail: config.fromEmail,\n      fromName: config.fromName,\n      openAiApiKey: config.openAiApiKey,\n      sendgridApiKey: config.sendgridApiKey,\n      hubspotAccessToken: config.hubspotAccessToken,\n      slackWebhookUrl: config.slackWebhookUrl,\n      dryRun: config.dryRun,\n      delaySeconds: config.delaySeconds\n    }\n  }));"
+      },
+      "id": "9459dd61-c04e-4cb6-8db0-97468fe07130",
+      "name": "Normalize Leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const lead = item.json;\n\n  const subject =\n    lead.personalizedSubject ||\n    `Quick idea for ${lead.company}`;\n\n  const body =\n    lead.personalizedEmail ||\n    `Hi ${lead.firstName},\\n\\nI wanted to reach out regarding ${lead.company}.`;\n\n  return {\n    json: {\n      ...lead,\n      subject,\n      body,\n      sendgridPayload: {\n        personalizations: [\n          {\n            to: [\n              {\n                email: lead.email,\n                name: lead.fullName\n              }\n            ],\n            subject\n          }\n        ],\n        from: {\n          email: lead.fromEmail,\n          name: lead.fromName\n        },\n        content: [\n          {\n            type: \"text/plain\",\n            value: body\n          }\n        ]\n      }\n    }\n  };\n});"
+      },
+      "id": "228a7ef2-0511-4a0a-8428-d5525c14312d",
+      "name": "Prepare Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.dryRun}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "a0efb8e2-8710-4803-9c0f-06f6fa903f9b",
+      "name": "Dry Run?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1632,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.sendgrid.com/v3/mail/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$json.sendgridApiKey}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json.sendgridPayload}}",
+        "options": {}
+      },
+      "id": "9bebc668-81f5-49e0-ab3b-ab1032f06a2a",
+      "name": "Send Email - SendGrid",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1840,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/contacts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$json.hubspotAccessToken}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"properties\": {\n    \"email\": \"{{$json.email}}\",\n    \"firstname\": \"{{$json.firstName}}\",\n    \"lastname\": \"{{$json.lastName}}\",\n    \"company\": \"{{$json.company}}\",\n    \"jobtitle\": \"{{$json.title}}\",\n    \"website\": \"{{$json.website}}\",\n    \"lifecyclestage\": \"lead\"\n  }\n}",
+        "options": {}
+      },
+      "id": "8e2ff71a-712a-4ecf-994b-b854bd2377db",
+      "name": "Create Contact - HubSpot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2032,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$json.slackWebhookUrl}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"New outreach prepared/sent:\\n*{{$json.fullName}}* — {{$json.title}} at {{$json.company}}\\nEmail: {{$json.email}}\\nSubject: {{$json.subject}}\\nDry run: {{$json.dryRun}}\"\n}",
+        "options": {}
+      },
+      "id": "60499853-10b6-4c9c-a355-6bf92adc377c",
+      "name": "Notify Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2224,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "content": "AI Lead Generation + Personalized Outreach System\nWhat This Workflow Does\n\nThis workflow automatically finds potential customers, writes personalized outreach messages for each one using AI, sends the outreach, stores the lead in a CRM, and notifies you of activity.\n\nStep 1: Find Prospects --> Searches for ideal prospects based on industry, title, and location.\nExample: Founders, CEOs, Practice Owners, Agency Owners, etc.\n\nStep 2: Enrich Lead Data --> Collects company information, job title, website, and contact details.\n\nStep 3: AI Personalization --> Uses AI to write a custom outreach message for each prospect.\nReferences their role, company, and business context.\nEliminates generic \"copy/paste\" cold emails.\n\nStep 4: Automated Outreach --> Sends the personalized email automatically.\nCan eventually be expanded to LinkedIn, SMS, and other channels.\n\nStep 5: CRM Tracking --> Creates or updates the contact inside HubSpot.\nKeeps all leads organized and searchable.\n\nStep 6: Team Notifications --> Sends Slack alerts whenever outreach is sent.\nGives visibility into pipeline activity.\n\nStep 7: Repeat at Scale --> Processes leads continuously. Performs work that would normally require hours of manual effort every day.\nThe Business Problem It Solves\n\n\n",
+        "height": 768,
+        "width": 688
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        736,
+        -560
+      ],
+      "id": "11409b94-54d7-43f9-a630-ddf958380080",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      people: [\n        {\n          first_name: \"Sarah\",\n          last_name: \"Johnson\",\n          name: \"Sarah Johnson\",\n          email: \"sarah@acmefitness.com\",\n          title: \"Founder\",\n          linkedin_url: \"https://linkedin.com/in/sarahjohnson\",\n          organization: {\n            name: \"Acme Fitness\",\n            website_url: \"https://acmefitness.com\"\n          }\n        },\n        {\n          first_name: \"Michael\",\n          last_name: \"Davis\",\n          name: \"Michael Davis\",\n          email: \"michael@elitewellness.com\",\n          title: \"CEO\",\n          linkedin_url: \"https://linkedin.com/in/michaeldavis\",\n          organization: {\n            name: \"Elite Wellness\",\n            website_url: \"https://elitewellness.com\"\n          }\n        },\n        {\n          first_name: \"Jessica\",\n          last_name: \"Taylor\",\n          name: \"Jessica Taylor\",\n          email: \"jessica@thrivehealth.com\",\n          title: \"Owner\",\n          linkedin_url: \"https://linkedin.com/in/jessicataylor\",\n          organization: {\n            name: \"Thrive Health\",\n            website_url: \"https://thrivehealth.com\"\n          }\n        }\n      ]\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        256
+      ],
+      "id": "aa002ba2-1c52-497c-9443-e7924d777442",
+      "name": "Sample Leads"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const lead = item.json;\n\n  const firstName = lead.firstName || 'there';\n  const company = lead.company || 'your company';\n  const title = lead.title || 'business leader';\n  const offer = lead.offer || 'AI-powered workflow automation';\n  const calendarLink = lead.calendarLink || '';\n\n  const subject = `${firstName}, quick idea for ${company}`;\n\n  const body = `Hi ${firstName},\n\nI came across ${company} and noticed you're the ${title}.\n\nI help businesses eliminate repetitive sales and outreach work using ${offer}. The goal is simple: generate more qualified opportunities while reducing the amount of manual prospecting and follow-up required.\n\nI thought there could be an interesting automation opportunity for ${company}.\n\nWould you be open to a quick conversation?\n\n${calendarLink}\n\nBest,\nDemo Sender\nABM Solutions`;\n\n  return {\n    json: {\n      ...lead,\n      personalizedSubject: subject,\n      personalizedEmail: body,\n      personalizationMethod: 'Demo AI Simulation'\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        256
+      ],
+      "id": "11ad773c-1297-4390-be5a-c0a57dc123e9",
+      "name": "AI Personalize Email (Demo)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const lead = item.json;\n\n  return {\n    json: {\n      ...lead,\n      emailStatus: \"SIMULATED_SEND_SUCCESS\",\n      demoMode: true,\n      sentTo: lead.email,\n      sentSubject: lead.subject,\n      sentBody: lead.body,\n      simulatedAt: new Date().toISOString()\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1840,
+        128
+      ],
+      "id": "9025e61f-7edc-4031-91a8-63362ca44d04",
+      "name": "Demo Email Sent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map((item, index) => {\n  const lead = item.json;\n\n  return {\n    json: {\n      ...lead,\n      hubspotStatus: \"SIMULATED_CONTACT_CREATED\",\n      hubspotDemoMode: true,\n      simulatedContactId: `demo-contact-${index + 1}`,\n      crmRecord: {\n        email: lead.email,\n        firstName: lead.firstName,\n        lastName: lead.lastName,\n        company: lead.company,\n        title: lead.title,\n        website: lead.website,\n        lifecycleStage: \"lead\"\n      },\n      hubspotSimulatedAt: new Date().toISOString()\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2032,
+        128
+      ],
+      "id": "39bc34af-9494-4eb6-9c7d-9716356a2e91",
+      "name": "Demo HubSpot Contact Created"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const lead = item.json;\n\n  const slackMessage =\n    `New outreach activity\\n` +\n    `Lead: ${lead.fullName}\\n` +\n    `Title: ${lead.title}\\n` +\n    `Company: ${lead.company}\\n` +\n    `Email: ${lead.email}\\n` +\n    `Subject: ${lead.subject}\\n` +\n    `CRM Status: ${lead.hubspotStatus || \"SIMULATED_CONTACT_CREATED\"}\\n` +\n    `Email Status: ${lead.emailStatus || \"SIMULATED_SEND_SUCCESS\"}`;\n\n  return {\n    json: {\n      ...lead,\n      slackStatus: \"SIMULATED_NOTIFICATION_SENT\",\n      slackDemoMode: true,\n      slackMessage,\n      slackSimulatedAt: new Date().toISOString()\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2224,
+        128
+      ],
+      "id": "6a0f685e-efc2-4648-a9ae-b073eef891bd",
+      "name": "Demo Slack Notification Sent"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start Manually": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Sample Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Leads": {
+      "main": [
+        [
+          {
+            "node": "AI Personalize Email (Demo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Email": {
+      "main": [
+        [
+          {
+            "node": "Dry Run?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dry Run?": {
+      "main": [
+        [
+          {
+            "node": "Demo Email Sent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Email - SendGrid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email - SendGrid": {
+      "main": [
+        [
+          {
+            "node": "Create Contact - HubSpot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Contact - HubSpot": {
+      "main": [
+        [
+          {
+            "node": "Notify Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Slack": {
+      "main": [
+        []
+      ]
+    },
+    "Sample Leads": {
+      "main": [
+        [
+          {
+            "node": "Normalize Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Personalize Email (Demo)": {
+      "main": [
+        [
+          {
+            "node": "Prepare Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Demo Email Sent": {
+      "main": [
+        [
+          {
+            "node": "Demo HubSpot Contact Created",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Demo HubSpot Contact Created": {
+      "main": [
+        [
+          {
+            "node": "Demo Slack Notification Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Demo Slack Notification Sent": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
