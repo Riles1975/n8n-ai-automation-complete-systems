@@ -1,0 +1,180 @@
+{
+  "name": "COMPLETE SYSTEMS → Pipeline Automation Dashboard",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SETUP + PURPOSE\n\nAggregates sales opportunities into total pipeline value, weighted forecast, closed-won revenue, stage distribution, and stalled-deal alerts.",
+        "height": 210,
+        "width": 288
+      },
+      "id": "006214be-def0-46a0-bc2d-27bd1985b932",
+      "name": "SETUP + PURPOSE",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        176,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "de3acf10-db1b-47e7-86b8-3ba747902b5a",
+      "name": "Manual Demo Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pipeline-automation-dashboard",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "71333bd0-2c78-4748-8851-2ec9a945f9ac",
+      "name": "COMPLETE SYSTEMS → Pipeline Automation Dashboard Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\n\nreturn [\n  {\n    json: {\n      config: {\n        companyName: body.companyName || 'ABM Solutions Demo',\n        demoMode: body.demoMode !== false\n      },\n      payload: body\n    }\n  }\n];"
+      },
+      "id": "fa776ca9-d150-4de8-85ba-d2eac701baeb",
+      "name": "Load Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst root=$input.first().json,p=root.payload||{};\nconst opportunities=p.opportunities||[\n{name:'Northstar',stage:'Proposal',amount:18000,probability:.65,daysInStage:6},\n{name:'Acme',stage:'Qualified',amount:9000,probability:.35,daysInStage:14},\n{name:'Vertex',stage:'Negotiation',amount:24000,probability:.8,daysInStage:3},\n{name:'Nova',stage:'Closed Won',amount:12000,probability:1,daysInStage:1}\n];\nreturn [{json:{...root,opportunities}}];\n"
+      },
+      "id": "2f50106d-8952-419d-89c1-5a14c5b25b24",
+      "name": "Create Demo Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json,ops=d.opportunities;\nconst byStage={}; let total=0,weighted=0,won=0;\nfor(const o of ops){byStage[o.stage]=(byStage[o.stage]||0)+1;total+=Number(o.amount||0);weighted+=Number(o.amount||0)*Number(o.probability||0);if(o.stage==='Closed Won')won+=Number(o.amount||0);}\nconst stalled=ops.filter(o=>o.daysInStage>=10&&o.stage!=='Closed Won'&&o.stage!=='Closed Lost');\nreturn [{json:{...d,result:{opportunityCount:ops.length,totalPipeline:total,weightedForecast:Math.round(weighted),closedWonRevenue:won,stageDistribution:byStage,stalledDeals:stalled,generatedAt:new Date().toISOString()}}}];\n"
+      },
+      "id": "2bfcffd9-d3ad-4d10-bb02-1d6e0019260b",
+      "name": "Calculate Pipeline KPIs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst d=$input.first().json;\nreturn [{json:{success:true,demoMode:d.config?.demoMode ?? true,workflow:$workflow.name,result:d.result || d,completedAt:new Date().toISOString()}}];\n"
+      },
+      "id": "eed4881f-273b-4e27-a171-94b216e7648f",
+      "name": "Execution Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "content": "WHAT IT DOES:\n\nTransforms raw sales opportunities into an executive-ready pipeline summary containing total pipeline value, weighted forecast, closed-won revenue, stage distribution, and stalled-deal alerts.\n\n\nHOW IT WORKS:\n\nReceives opportunity data through a production webhook, standardizes the input, calculates core sales KPIs, identifies deals stalled for 10 or more days, and returns a structured JSON report.\n\n\nWHY PAY FOR IT: \n\nGives sales leaders immediate pipeline visibility, improves forecasting, and identifies at-risk opportunities without manual spreadsheet calculations.",
+        "height": 608,
+        "width": 368,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        512,
+        -400
+      ],
+      "id": "68811730-930e-492a-ae5c-b93d66baf2da",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Demo Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COMPLETE SYSTEMS → Pipeline Automation Dashboard Webhook": {
+      "main": [
+        [
+          {
+            "node": "Load Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Configuration": {
+      "main": [
+        [
+          {
+            "node": "Create Demo Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Demo Input": {
+      "main": [
+        [
+          {
+            "node": "Calculate Pipeline KPIs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Pipeline KPIs": {
+      "main": [
+        [
+          {
+            "node": "Execution Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
